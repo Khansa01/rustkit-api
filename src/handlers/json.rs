@@ -3,11 +3,19 @@ use serde_json::Value;
 
 use crate::models::{ApiResponse, DiffInput, JsonInput};
 
+fn extract_str(val: &Value) -> String {
+    match val {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
 pub async fn format_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    match serde_json::from_str::<Value>(&body.json) {
+    let json_str = extract_str(&body.json);
+    match serde_json::from_str::<Value>(&json_str) {
         Ok(v) => Json(ApiResponse {
             ok: true,
-            result: Some(serde_json::to_string_pretty(&v).unwrap()),
+            result: Some(v),
             error: None,
         }),
         Err(e) => Json(ApiResponse {
@@ -19,10 +27,11 @@ pub async fn format_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
 }
 
 pub async fn minify_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    match serde_json::from_str::<Value>(&body.json) {
+    let json_str = extract_str(&body.json);
+    match serde_json::from_str::<Value>(&json_str) {
         Ok(v) => Json(ApiResponse {
             ok: true,
-            result: Some(v.to_string()),
+            result: Some(v),
             error: None,
         }),
         Err(e) => Json(ApiResponse {
@@ -34,10 +43,11 @@ pub async fn minify_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
 }
 
 pub async fn validate_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    match serde_json::from_str::<Value>(&body.json) {
+    let json_str = extract_str(&body.json);
+    match serde_json::from_str::<Value>(&json_str) {
         Ok(_) => Json(ApiResponse {
             ok: true,
-            result: Some("Valid JSON".to_string()),
+            result: Some("Valid JSON".into()),
             error: None,
         }),
         Err(e) => Json(ApiResponse {
@@ -49,7 +59,8 @@ pub async fn validate_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
 }
 
 pub async fn escape_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    let escaped = body.json
+    let json_str = extract_str(&body.json);
+    let escaped = json_str
         .replace('\\', "\\\\")
         .replace('"', "\\\"")
         .replace('\n', "\\n")
@@ -58,34 +69,43 @@ pub async fn escape_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
 
     Json(ApiResponse {
         ok: true,
-        result: Some(escaped),
+        result: Some(escaped.into()),
         error: None,
     })
 }
 
 pub async fn unescape_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    let unescaped = body.json
+    let json_str = extract_str(&body.json);
+    let unescaped = json_str
         .replace("\\\"", "\"")
         .replace("\\n", "\n")
         .replace("\\r", "\r")
         .replace("\\t", "\t")
         .replace("\\\\", "\\");
 
-    Json(ApiResponse {
-        ok: true,
-        result: Some(unescaped),
-        error: None,
-    })
+    match serde_json::from_str::<Value>(&unescaped) {
+        Ok(v) => Json(ApiResponse {
+            ok: true,
+            result: Some(v),  
+            error: None,
+        }),
+        Err(_) => Json(ApiResponse {
+            ok: true,
+            result: Some(unescaped.into()),  
+            error: None,
+        }),
+    }
 }
 
 pub async fn flatten_json(Json(body): Json<JsonInput>) -> Json<ApiResponse> {
-    match serde_json::from_str::<Value>(&body.json) {
+    let json_str = extract_str(&body.json);
+    match serde_json::from_str::<Value>(&json_str) {
         Ok(v) => {
             let mut flat = serde_json::Map::new();
             flatten_value("", &v, &mut flat);
             Json(ApiResponse {
                 ok: true,
-                result: Some(serde_json::to_string_pretty(&flat).unwrap()),
+                result: Some(Value::Object(flat)),
                 error: None,
             })
         }
@@ -116,7 +136,10 @@ fn flatten_value(prefix: &str, value: &Value, flat: &mut serde_json::Map<String,
 }
 
 pub async fn diff_json(Json(body): Json<DiffInput>) -> Json<ApiResponse> {
-    let left: Value = match serde_json::from_str(&body.left) {
+    let left_str = extract_str(&body.left);
+    let right_str = extract_str(&body.right);
+
+    let left: Value = match serde_json::from_str(&left_str) {
         Ok(v) => v,
         Err(e) => return Json(ApiResponse {
             ok: false,
@@ -125,7 +148,7 @@ pub async fn diff_json(Json(body): Json<DiffInput>) -> Json<ApiResponse> {
         }),
     };
 
-    let right: Value = match serde_json::from_str(&body.right) {
+    let right: Value = match serde_json::from_str(&right_str) {
         Ok(v) => v,
         Err(e) => return Json(ApiResponse {
             ok: false,
@@ -138,7 +161,7 @@ pub async fn diff_json(Json(body): Json<DiffInput>) -> Json<ApiResponse> {
 
     Json(ApiResponse {
         ok: true,
-        result: Some(diff.join("\n")),
+        result: Some(diff.join("\n").into()),
         error: None,
     })
 }
