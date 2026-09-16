@@ -22,6 +22,7 @@ async fn main() {
         .route("/text/uppercase",   post(handlers::to_uppercase))
         .route("/text/lowercase",   post(handlers::to_lowercase))
         .route("/text/reverse",     post(handlers::reverse))
+        .route("/qr/generate",      post(handlers::generate_qr))
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

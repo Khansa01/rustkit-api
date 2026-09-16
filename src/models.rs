@@ -1,19 +1,20 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Deserialize)]
 pub struct JsonInput {
-    pub json: String,
+    pub json: Value,
 }
 
 #[derive(Deserialize)]
 pub struct DiffInput {
-    pub left: String,
-    pub right: String,
+    pub left: Value,
+    pub right: Value,
 }
 
 #[derive(Serialize)]
 pub struct ApiResponse {
     pub ok: bool,
-    pub result: Option<String>,
+    pub result: Option<Value>,
     pub error: Option<String>,
 }
